@@ -1,4 +1,6 @@
-# Cluster Availability Service
+# java21-multicluster
+
+## Cluster Availability Service
 
 Backend interno en Java 21 y Spring Boot 3 para publicar, con baja latencia, el estado operativo de un cluster. El endpoint productivo responde siempre desde memoria; la base SQL Server se consulta solamente por sincronizacion programada.
 
@@ -8,20 +10,20 @@ La aplicacion sigue arquitectura hexagonal:
 
 ```text
 com.company.clusteravailability
-├── domain
-│   ├── model
-│   ├── exception
-│   └── port
-├── application
-│   ├── port
-│   └── service
-└── infrastructure
-    ├── adapter.in.rest
-    ├── adapter.in.schedule
-    ├── adapter.out.persistence
-    ├── inmemory
-    ├── config
-    └── config.property
+|-- domain
+|   |-- model
+|   |-- exception
+|   `-- port
+|-- application
+|   |-- port
+|   `-- service
+`-- infrastructure
+    |-- adapter.in.rest
+    |-- adapter.in.schedule
+    |-- adapter.out.persistence
+    |-- inmemory
+    |-- config
+    `-- config.property
 ```
 
 Reglas principales:
