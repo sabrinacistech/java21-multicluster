@@ -13,8 +13,8 @@ class ClusterStatusPersistenceAdapterTest {
 
     @Test
     void mapsEntityToDomain() {
-        ClusterStatusJpaRepository repository = mock(ClusterStatusJpaRepository.class);
-        ClusterStatusJpaEntity entity = mock(ClusterStatusJpaEntity.class);
+        ClusterStatusMongoRepository repository = mock(ClusterStatusMongoRepository.class);
+        ClusterStatusMongoDocument entity = mock(ClusterStatusMongoDocument.class);
         when(entity.getClusterAlias()).thenReturn("primary-cluster");
         when(entity.getActive()).thenReturn(true);
         when(entity.getPollingIntervalSeconds()).thenReturn(30L);

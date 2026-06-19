@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class ClusterStatusMapper {
 
-    ClusterStatus toDomain(ClusterStatusJpaEntity entity) {
+    ClusterStatus toDomain(ClusterStatusMongoDocument entity) {
         return new ClusterStatus(
                 new ClusterAlias(entity.getClusterAlias()),
                 entity.getActive(),
@@ -18,7 +18,7 @@ public class ClusterStatusMapper {
         );
     }
 
-    PollingConfig toDomain(ClusterStatusProjection projection) {
+    PollingConfig toPollingConfig(ClusterStatusMongoDocument projection) {
         return new PollingConfig(
                 new PollingIntervalSeconds(projection.getPollingIntervalSeconds()),
                 projection.getUpdatedAt()

@@ -50,7 +50,7 @@ class SynchronizeClusterStatusServiceTest {
     @Test
     void keepsPreviousStatusWhenRepositoryFails() {
         when(repository.findByAlias(new ClusterAlias("primary-cluster")))
-                .thenThrow(new ClusterStatusRepositoryException("boom", new RuntimeException("sql")));
+                .thenThrow(new ClusterStatusRepositoryException("boom", new RuntimeException("mongo")));
 
         new SynchronizeClusterStatusService(repository, store, configuration).synchronize();
 

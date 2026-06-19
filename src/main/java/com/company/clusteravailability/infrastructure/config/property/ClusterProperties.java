@@ -19,7 +19,7 @@ public record ClusterProperties(
             scheduler = new Scheduler(30, 5);
         }
         if (cache == null) {
-            cache = new Cache(60);
+            cache = new Cache(60, "cluster_cache");
         }
     }
 
@@ -29,6 +29,6 @@ public record ClusterProperties(
     ) {
     }
 
-    public record Cache(@Positive long ttlSeconds) {
+    public record Cache(@Positive long ttlSeconds, @NotBlank String collectionName) {
     }
 }

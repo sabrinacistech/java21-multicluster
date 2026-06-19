@@ -1,34 +1,32 @@
 package com.company.clusteravailability.infrastructure.adapter.out.persistence;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
 import java.time.Instant;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
-@Entity
-@Table(name = "cluster_status", schema = "dbo")
-public class ClusterStatusJpaEntity {
+@Document(collection = "cluster_status")
+public class ClusterStatusMongoDocument {
 
     @Id
-    private Long id;
+    private String id;
 
-    @Column(name = "cluster_alias", nullable = false)
+    @Field("cluster_alias")
     private String clusterAlias;
 
-    @Column(name = "active", nullable = false)
+    @Field("active")
     private Boolean active;
 
-    @Column(name = "polling_interval_seconds", nullable = false)
+    @Field("polling_interval_seconds")
     private Long pollingIntervalSeconds;
 
-    @Column(name = "updated_at", nullable = false)
+    @Field("updated_at")
     private Instant updatedAt;
 
-    @Column(name = "created_at", nullable = false)
+    @Field("created_at")
     private Instant createdAt;
 
-    public Long getId() {
+    public String getId() {
         return id;
     }
 

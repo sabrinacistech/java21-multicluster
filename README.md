@@ -2,7 +2,7 @@
 
 ## Cluster Availability Service
 
-Backend interno en Java 21 y Spring Boot 3 para publicar, con baja latencia, el estado operativo de un cluster. El endpoint productivo responde siempre desde memoria; la base SQL Server se consulta solamente por sincronizacion programada.
+Backend interno en Java 21 y Spring Boot 3 para publicar, con baja latencia, el estado operativo de un cluster. El endpoint productivo responde siempre desde memoria; MongoDB se consulta solamente por sincronizacion programada.
 
 ## Arquitectura
 
@@ -28,10 +28,10 @@ com.company.clusteravailability
 
 Reglas principales:
 
-- `domain` no depende de Spring, JPA ni infraestructura.
+- `domain` no depende de Spring, MongoDB ni infraestructura.
 - `application` solo conoce puertos y dominio.
 - REST vive en `infrastructure.adapter.in.rest`.
-- JPA vive en `infrastructure.adapter.out.persistence`.
+- MongoDB vive en `infrastructure.adapter.out.persistence`.
 - El controller es delgado y no accede a repositorios.
 - El estado en memoria se guarda con `AtomicReference` y lectura O(1).
 
@@ -39,25 +39,25 @@ Reglas principales:
 
 1. La aplicacion carga properties tipadas desde `cluster.*`.
 2. Al iniciar, el scheduler ejecuta una sincronizacion inicial.
-3. El caso de uso consulta `dbo.cluster_status` por alias usando el puerto de repositorio.
-4. El adaptador JPA aplica cache y circuit breaker.
+3. El caso de uso consulta la coleccion `cluster_status` por alias usando el puerto de repositorio.
+4. El adaptador Mongo aplica cache y circuit breaker.
 5. El mapper transforma la entidad a modelo de dominio.
 6. El dominio valida alias, estado, intervalo y fecha.
 7. El store en memoria se actualiza con el ultimo estado valido.
-8. `GET /api/v1/cluster/status` responde desde memoria, sin consultar SQL Server.
+8. `GET /api/v1/cluster/status` responde desde memoria, sin consultar MongoDB.
 9. El scheduler ajusta dinamicamente el proximo intervalo con `polling_interval_seconds`.
 
-## Tabla Esperada
+## Coleccion Esperada
 
-```sql
-CREATE TABLE dbo.cluster_status (
-    id BIGINT NOT NULL PRIMARY KEY,
-    cluster_alias VARCHAR(120) NOT NULL,
-    active BIT NOT NULL,
-    polling_interval_seconds BIGINT NOT NULL,
-    updated_at DATETIME2 NOT NULL,
-    created_at DATETIME2 NOT NULL
-);
+```json
+{
+  "_id": "primary-cluster",
+  "cluster_alias": "primary-cluster",
+  "active": true,
+  "polling_interval_seconds": 30,
+  "updated_at": "2026-06-19T10:15:00Z",
+  "created_at": "2026-06-19T10:00:00Z"
+}
 ```
 
 ## Configuracion
@@ -72,18 +72,18 @@ cluster:
     initial-delay-seconds: 5
   cache:
     ttl-seconds: 60
+    collection-name: cluster_cache
 ```
 
-Datasource por variables de entorno:
+MongoDB por variables de entorno:
 
 ```text
-SPRING_DATASOURCE_URL
-SPRING_DATASOURCE_USERNAME
-SPRING_DATASOURCE_PASSWORD
+SPRING_DATA_MONGODB_URI
 CLUSTER_ALIAS
 CLUSTER_SCHEDULER_DEFAULT_POLLING_INTERVAL_SECONDS
 CLUSTER_SCHEDULER_INITIAL_DELAY_SECONDS
 CLUSTER_CACHE_TTL_SECONDS
+CLUSTER_CACHE_COLLECTION_NAME
 ```
 
 ## API
@@ -142,11 +142,11 @@ http://localhost:8080/swagger-ui.html
 
 El adaptador `ClusterStatusPersistenceAdapter` usa:
 
-- Cache JCache/Ehcache para `clusterStatusByAlias`.
-- Cache JCache/Ehcache para `clusterPollingConfigByAlias`.
+- Cache Mongo para `clusterStatusByAlias`.
+- Cache Mongo para `clusterPollingConfigByAlias`.
 - Circuit breaker `clusterStatusRepository`.
 
-Los errores tecnicos se propagan como `ClusterStatusRepositoryException` y no se cachean.
+La cache Mongo se implementa con un `CacheManager` de Spring que guarda entradas serializadas en la coleccion configurable `cluster_cache`, con expiracion logica por `expires_at`. Los errores tecnicos se propagan como `ClusterStatusRepositoryException` y no se cachean.
 
 ## Ejecucion Local
 
@@ -154,7 +154,7 @@ Requisitos:
 
 - Java 21.
 - Maven 3.9+.
-- SQL Server accesible.
+- MongoDB accesible.
 
 Comandos:
 
@@ -178,7 +178,7 @@ El servicio registra eventos de inicio, fin, duracion, alias, resultado, errores
 
 El `Dockerfile` usa Java 21 runtime. Para OpenShift:
 
-- Inyectar secretos de datasource mediante `Secret`.
+- Inyectar la URI de MongoDB mediante `Secret`.
 - Inyectar alias e intervalos mediante `ConfigMap`.
 - Usar `/actuator/health/liveness` y `/actuator/health/readiness`.
 - No hardcodear credenciales.

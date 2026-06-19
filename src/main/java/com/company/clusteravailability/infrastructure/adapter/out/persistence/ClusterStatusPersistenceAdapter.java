@@ -13,10 +13,10 @@ import org.springframework.stereotype.Component;
 @Component
 public class ClusterStatusPersistenceAdapter implements ClusterStatusRepositoryPort {
 
-    private final ClusterStatusJpaRepository repository;
+    private final ClusterStatusMongoRepository repository;
     private final ClusterStatusMapper mapper;
 
-    public ClusterStatusPersistenceAdapter(ClusterStatusJpaRepository repository, ClusterStatusMapper mapper) {
+    public ClusterStatusPersistenceAdapter(ClusterStatusMongoRepository repository, ClusterStatusMapper mapper) {
         this.repository = repository;
         this.mapper = mapper;
     }
@@ -32,7 +32,7 @@ public class ClusterStatusPersistenceAdapter implements ClusterStatusRepositoryP
     @Cacheable(cacheNames = "clusterPollingConfigByAlias", key = "#alias.value()")
     @CircuitBreaker(name = "clusterStatusRepository", fallbackMethod = "fallbackFindPollingConfigByAlias")
     public Optional<PollingConfig> findPollingConfigByAlias(ClusterAlias alias) {
-        return repository.findPollingConfigByClusterAlias(alias.value()).map(mapper::toDomain);
+        return repository.findPollingConfigByClusterAlias(alias.value()).map(mapper::toPollingConfig);
     }
 
     Optional<ClusterStatus> fallbackFindByAlias(ClusterAlias alias, Throwable throwable) {

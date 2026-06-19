@@ -14,9 +14,9 @@ import org.springframework.web.bind.annotation.RestController;
 class HexagonalArchitectureTest {
 
     @ArchTest
-    static final ArchRule domainDoesNotDependOnSpringOrJpa = noClasses()
+    static final ArchRule domainDoesNotDependOnSpringOrMongo = noClasses()
             .that().resideInAPackage("..domain..")
-            .should().dependOnClassesThat().resideInAnyPackage("org.springframework..", "jakarta.persistence..");
+            .should().dependOnClassesThat().resideInAnyPackage("org.springframework..", "org.springframework.data.mongodb..");
 
     @ArchTest
     static final ArchRule applicationDoesNotDependOnInfrastructure = noClasses()
@@ -29,17 +29,17 @@ class HexagonalArchitectureTest {
             .should().resideInAPackage("..infrastructure.adapter.in.rest..");
 
     @ArchTest
-    static final ArchRule jpaRepositoriesLiveInPersistenceAdapter = classes()
+    static final ArchRule mongoRepositoriesLiveInPersistenceAdapter = classes()
             .that().areAssignableTo(org.springframework.data.repository.Repository.class)
             .should().resideInAPackage("..infrastructure.adapter.out.persistence..");
 
     @ArchTest
-    static final ArchRule jpaEntitiesLiveInPersistenceAdapter = classes()
-            .that().areAnnotatedWith(jakarta.persistence.Entity.class)
+    static final ArchRule clusterStatusMongoDocumentsLiveInPersistenceAdapter = classes()
+            .that().haveSimpleName("ClusterStatusMongoDocument")
             .should().resideInAPackage("..infrastructure.adapter.out.persistence..");
 
     @ArchTest
-    static final ArchRule controllersDoNotDependOnJpaRepositories = noClasses()
+    static final ArchRule controllersDoNotDependOnMongoRepositories = noClasses()
             .that().resideInAPackage("..infrastructure.adapter.in.rest..")
             .should().dependOnClassesThat().resideInAPackage("..infrastructure.adapter.out.persistence..");
 

@@ -7,18 +7,11 @@ spring:
   threads:
     virtual:
       enabled: true
-  datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:sqlserver://localhost:1433;databaseName=clusterdb;encrypt=false}
-    username: ${SPRING_DATASOURCE_USERNAME:sa}
-    password: ${SPRING_DATASOURCE_PASSWORD:yourStrong(!)Password}
-  jpa:
-    hibernate:
-      ddl-auto: validate
-    open-in-view: false
+  data:
+    mongodb:
+      uri: ${SPRING_DATA_MONGODB_URI:mongodb://localhost:27017/clusterdb}
   cache:
-    type: jcache
-    jcache:
-      config: classpath:ehcache.xml
+    type: simple
 
 cluster:
   alias: ${CLUSTER_ALIAS:primary-cluster}
@@ -27,6 +20,7 @@ cluster:
     initial-delay-seconds: ${CLUSTER_SCHEDULER_INITIAL_DELAY_SECONDS:5}
   cache:
     ttl-seconds: ${CLUSTER_CACHE_TTL_SECONDS:60}
+    collection-name: ${CLUSTER_CACHE_COLLECTION_NAME:cluster_cache}
 
 resilience4j:
   circuitbreaker:
