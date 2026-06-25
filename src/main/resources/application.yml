@@ -10,9 +10,6 @@ spring:
   data:
     mongodb:
       uri: ${SPRING_DATA_MONGODB_URI:mongodb://localhost:27017/clusterdb}
-  cache:
-    type: simple
-
 cluster:
   alias: ${CLUSTER_ALIAS:primary-cluster}
   scheduler:
@@ -21,6 +18,13 @@ cluster:
   cache:
     ttl-seconds: ${CLUSTER_CACHE_TTL_SECONDS:60}
     collection-name: ${CLUSTER_CACHE_COLLECTION_NAME:cluster_cache}
+  mongo:
+    connect-timeout-ms: ${CLUSTER_MONGO_CONNECT_TIMEOUT_MS:500}
+    read-timeout-ms: ${CLUSTER_MONGO_READ_TIMEOUT_MS:1000}
+    server-selection-timeout-ms: ${CLUSTER_MONGO_SERVER_SELECTION_TIMEOUT_MS:1000}
+    max-connection-pool-size: ${CLUSTER_MONGO_MAX_CONNECTION_POOL_SIZE:100}
+    min-connection-pool-size: ${CLUSTER_MONGO_MIN_CONNECTION_POOL_SIZE:0}
+    max-wait-time-ms: ${CLUSTER_MONGO_MAX_WAIT_TIME_MS:500}
 
 resilience4j:
   circuitbreaker:
@@ -30,6 +34,14 @@ resilience4j:
         failureRateThreshold: 50
         waitDurationInOpenState: 30s
         permittedNumberOfCallsInHalfOpenState: 3
+      mongoCache:
+        slidingWindowSize: 50
+        minimumNumberOfCalls: 20
+        failureRateThreshold: 25
+        slowCallRateThreshold: 50
+        slowCallDurationThreshold: 250ms
+        waitDurationInOpenState: 10s
+        permittedNumberOfCallsInHalfOpenState: 5
 
 management:
   endpoints:

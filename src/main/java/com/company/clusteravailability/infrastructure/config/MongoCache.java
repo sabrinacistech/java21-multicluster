@@ -2,10 +2,13 @@ package com.company.clusteravailability.infrastructure.config;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.concurrent.Callable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.cache.Cache;
 import org.springframework.cache.support.SimpleValueWrapper;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -15,12 +18,15 @@ import org.springframework.data.mongodb.core.query.Update;
 
 class MongoCache implements Cache {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(MongoCache.class);
+
     private final String name;
     private final String collectionName;
     private final MongoTemplate mongoTemplate;
     private final ObjectMapper objectMapper;
     private final Clock clock;
     private final Duration ttl;
+    private final CircuitBreaker circuitBreaker;
 
     MongoCache(
             String name,
@@ -28,7 +34,8 @@ class MongoCache implements Cache {
             MongoTemplate mongoTemplate,
             ObjectMapper objectMapper,
             Clock clock,
-            Duration ttl
+            Duration ttl,
+            CircuitBreaker circuitBreaker
     ) {
         this.name = name;
         this.collectionName = collectionName;
@@ -36,6 +43,7 @@ class MongoCache implements Cache {
         this.objectMapper = objectMapper;
         this.clock = clock;
         this.ttl = ttl;
+        this.circuitBreaker = circuitBreaker;
     }
 
     @Override
@@ -62,7 +70,9 @@ class MongoCache implements Cache {
             return null;
         }
         if (!type.isInstance(value)) {
-            throw new IllegalStateException("Cached value is not of required type " + type.getName());
+            LOGGER.warn("mongo_cache_type_mismatch cacheName={} expectedType={} actualType={}", name, type.getName(), value.getClass().getName());
+            evict(key);
+            return null;
         }
         return (T) value;
     }
@@ -92,30 +102,53 @@ class MongoCache implements Cache {
         String cacheKey = key.toString();
         String id = id(cacheKey);
         try {
-            Query query = Query.query(Criteria.where("_id").is(id));
-            Update update = new Update()
-                    .set("cache_name", name)
-                    .set("cache_key", cacheKey)
-                    .set("payload", objectMapper.writeValueAsString(value))
-                    .set("type", value.getClass().getName())
-                    .set("expires_at", Instant.now(clock).plus(ttl));
-            mongoTemplate.upsert(query, update, collectionName);
+            String payload = objectMapper.writeValueAsString(value);
+            circuitBreaker.executeRunnable(() -> {
+                Query query = Query.query(Criteria.where("_id").is(id));
+                Update update = new Update()
+                        .set("cache_name", name)
+                        .set("cache_key", cacheKey)
+                        .set("payload", payload)
+                        .set("type", value.getClass().getName())
+                        .set("expires_at", Instant.now(clock).plus(ttl));
+                mongoTemplate.upsert(query, update, collectionName);
+            });
         } catch (JsonProcessingException ex) {
-            throw new IllegalStateException("Unable to serialize cache value", ex);
+            LOGGER.warn("mongo_cache_serialize_failed cacheName={} key={} errorCode={}", name, cacheKey, ex.getClass().getSimpleName());
+        } catch (RuntimeException ex) {
+            LOGGER.warn("mongo_cache_put_failed cacheName={} key={} errorCode={}", name, cacheKey, ex.getClass().getSimpleName());
         }
     }
 
     @Override
     public void evict(Object key) {
-        mongoTemplate.remove(Query.query(Criteria.where("_id").is(id(key.toString()))), collectionName);
+        String cacheKey = key.toString();
+        try {
+            circuitBreaker.executeRunnable(() -> mongoTemplate.remove(Query.query(Criteria.where("_id").is(id(cacheKey))), collectionName));
+        } catch (RuntimeException ex) {
+            LOGGER.warn("mongo_cache_evict_failed cacheName={} key={} errorCode={}", name, cacheKey, ex.getClass().getSimpleName());
+        }
     }
 
     @Override
     public void clear() {
-        mongoTemplate.remove(Query.query(Criteria.where("cache_name").is(name)), collectionName);
+        try {
+            circuitBreaker.executeRunnable(() -> mongoTemplate.remove(Query.query(Criteria.where("cache_name").is(name)), collectionName));
+        } catch (RuntimeException ex) {
+            LOGGER.warn("mongo_cache_clear_failed cacheName={} errorCode={}", name, ex.getClass().getSimpleName());
+        }
     }
 
     private Object lookup(Object key) {
+        try {
+            return circuitBreaker.executeSupplier(() -> lookupInternal(key));
+        } catch (RuntimeException ex) {
+            LOGGER.warn("mongo_cache_lookup_failed cacheName={} key={} errorCode={}", name, key, ex.getClass().getSimpleName());
+            return null;
+        }
+    }
+
+    private Object lookupInternal(Object key) {
         Query query = Query.query(Criteria.where("_id").is(id(key.toString())));
         MongoCacheEntryDocument entry = mongoTemplate.findOne(query, MongoCacheEntryDocument.class, collectionName);
         if (entry == null) {
@@ -130,7 +163,8 @@ class MongoCache implements Cache {
             return objectMapper.readValue(entry.getPayload(), type);
         } catch (ClassNotFoundException | JsonProcessingException ex) {
             evict(key);
-            throw new IllegalStateException("Unable to deserialize cache value", ex);
+            LOGGER.warn("mongo_cache_deserialize_failed cacheName={} key={} errorCode={}", name, key, ex.getClass().getSimpleName());
+            return null;
         }
     }
 

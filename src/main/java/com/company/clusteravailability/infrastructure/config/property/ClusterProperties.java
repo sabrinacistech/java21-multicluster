@@ -11,7 +11,8 @@ import org.springframework.validation.annotation.Validated;
 public record ClusterProperties(
         @NotBlank String alias,
         Scheduler scheduler,
-        Cache cache
+        Cache cache,
+        Mongo mongo
 ) implements ClusterConfigurationPort {
 
     public ClusterProperties {
@@ -20,6 +21,9 @@ public record ClusterProperties(
         }
         if (cache == null) {
             cache = new Cache(60, "cluster_cache");
+        }
+        if (mongo == null) {
+            mongo = new Mongo(500, 1_000, 1_000, 100, 0, 500);
         }
     }
 
@@ -30,5 +34,15 @@ public record ClusterProperties(
     }
 
     public record Cache(@Positive long ttlSeconds, @NotBlank String collectionName) {
+    }
+
+    public record Mongo(
+            @Positive int connectTimeoutMs,
+            @Positive int readTimeoutMs,
+            @Positive int serverSelectionTimeoutMs,
+            @Positive int maxConnectionPoolSize,
+            int minConnectionPoolSize,
+            @Positive int maxWaitTimeMs
+    ) {
     }
 }

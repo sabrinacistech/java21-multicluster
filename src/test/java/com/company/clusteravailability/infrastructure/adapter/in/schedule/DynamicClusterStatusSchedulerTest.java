@@ -27,7 +27,12 @@ class DynamicClusterStatusSchedulerTest {
                 new ThreadPoolTaskScheduler(),
                 mock(SynchronizeClusterStatusUseCase.class),
                 repository,
-                new ClusterProperties("primary-cluster", new ClusterProperties.Scheduler(30, 5), new ClusterProperties.Cache(60, "cluster_cache"))
+                new ClusterProperties(
+                        "primary-cluster",
+                        new ClusterProperties.Scheduler(30, 5),
+                        new ClusterProperties.Cache(60, "cluster_cache"),
+                        new ClusterProperties.Mongo(500, 1_000, 1_000, 100, 0, 500)
+                )
         );
 
         scheduler.refreshPollingInterval();

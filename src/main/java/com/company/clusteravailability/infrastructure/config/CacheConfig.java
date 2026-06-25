@@ -2,6 +2,7 @@ package com.company.clusteravailability.infrastructure.config;
 
 import com.company.clusteravailability.infrastructure.config.property.ClusterProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import java.time.Clock;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
@@ -18,8 +19,9 @@ public class CacheConfig {
             ClusterProperties properties,
             MongoTemplate mongoTemplate,
             ObjectMapper objectMapper,
-            Clock clock
+            Clock clock,
+            CircuitBreakerRegistry circuitBreakerRegistry
     ) {
-        return new MongoCacheManager(properties, mongoTemplate, objectMapper, clock);
+        return new MongoCacheManager(properties, mongoTemplate, objectMapper, clock, circuitBreakerRegistry);
     }
 }

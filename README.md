@@ -146,7 +146,28 @@ El adaptador `ClusterStatusPersistenceAdapter` usa:
 - Cache Mongo para `clusterPollingConfigByAlias`.
 - Circuit breaker `clusterStatusRepository`.
 
-La cache Mongo se implementa con un `CacheManager` de Spring que guarda entradas serializadas en la coleccion configurable `cluster_cache`, con expiracion logica por `expires_at`. Los errores tecnicos se propagan como `ClusterStatusRepositoryException` y no se cachean.
+La cache Mongo se implementa con un `CacheManager` de Spring que guarda entradas serializadas en la coleccion configurable `cluster_cache`.
+
+Comportamiento de cache:
+
+- Usa circuit breaker `mongoCache`.
+- Falla en modo fail-open: si Mongo cache no responde, se trata como cache miss y no rompe el flujo.
+- Crea indice TTL real sobre `expires_at` al iniciar la aplicacion.
+- Crea indice por `cache_name` y `cache_key`.
+- Los errores tecnicos de persistencia se propagan como `ClusterStatusRepositoryException` y no se cachean.
+
+Configuracion Mongo recomendada para alta carga:
+
+```yaml
+cluster:
+  mongo:
+    connect-timeout-ms: 500
+    read-timeout-ms: 1000
+    server-selection-timeout-ms: 1000
+    max-connection-pool-size: 100
+    min-connection-pool-size: 0
+    max-wait-time-ms: 500
+```
 
 ## Ejecucion Local
 
